@@ -8,9 +8,8 @@ import torchaudio
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from text import text_to_sequence
-
-from hw_nv.utils.parse_config import ConfigParser
+from hw_asr.base.base_text_encoder import BaseTextEncoder
+from hw_asr.utils.parse_config import ConfigParser
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +18,7 @@ class BaseDataset(Dataset):
     def __init__(
             self,
             index,
+            text_encoder: BaseTextEncoder,
             config_parser: ConfigParser,
             wave_augs=None,
             spec_augs=None,
@@ -26,6 +26,7 @@ class BaseDataset(Dataset):
             max_audio_length=None,
             max_text_length=None,
     ):
+        self.text_encoder = text_encoder
         self.config_parser = config_parser
         self.wave_augs = wave_augs
         self.spec_augs = spec_augs
@@ -33,18 +34,23 @@ class BaseDataset(Dataset):
 
         self._assert_index_is_valid(index)
         index = self._filter_records_from_dataset(index, max_audio_length, max_text_length, limit)
+        # it's a good idea to sort index by audio length
+        # It would be easier to write length-based batch samplers later
+        index = self._sort_index(index)
         self._index: List[dict] = index
 
     def __getitem__(self, ind):
         data_dict = self._index[ind]
-
+        audio_path = data_dict["path"]
+        audio_wave = self.load_audio(audio_path)
+        audio_wave, audio_spec = self.process_wave(audio_wave)
         return {
+            "audio": audio_wave,
+            "spectrogram": audio_spec,
+            "duration": audio_wave.size(1) / self.config_parser["preprocessing"]["sr"],
             "text": data_dict["text"],
-            "pitch": data_dict.get("pitch", None),
-            "energy": data_dict["energy"],
-            "text_encoded": np.array(text_to_sequence(data_dict["text"], ["english_cleaners"])),
-            "mel": data_dict.get("mel", None),
-            "alignment": data_dict.get("alignment", None)
+            "text_encoded": self.text_encoder.encode(data_dict["text"]),
+            "audio_path": audio_path,
         }
 
     @staticmethod
@@ -82,12 +88,21 @@ class BaseDataset(Dataset):
             index: list, max_audio_length, max_text_length, limit
     ) -> list:
         initial_size = len(index)
+        if max_audio_length is not None:
+            exceeds_audio_length = np.array([el["audio_len"] for el in index]) >= max_audio_length
+            _total = exceeds_audio_length.sum()
+            logger.info(
+                f"{_total} ({_total / initial_size:.1%}) records are longer then "
+                f"{max_audio_length} seconds. Excluding them."
+            )
+        else:
+            exceeds_audio_length = False
 
         initial_size = len(index)
         if max_text_length is not None:
             exceeds_text_length = (
                     np.array(
-                        [len(el["text"]) for el in index]
+                        [len(BaseTextEncoder.normalize_text(el["text"])) for el in index]
                     )
                     >= max_text_length
             )
@@ -99,7 +114,7 @@ class BaseDataset(Dataset):
         else:
             exceeds_text_length = False
 
-        records_to_filter = exceeds_text_length
+        records_to_filter = exceeds_text_length | exceeds_audio_length
 
         if records_to_filter is not False and records_to_filter.any():
             _total = records_to_filter.sum()
@@ -117,6 +132,13 @@ class BaseDataset(Dataset):
     @staticmethod
     def _assert_index_is_valid(index):
         for entry in index:
+            assert "audio_len" in entry, (
+                "Each dataset item should include field 'audio_len'"
+                " - duration of audio (in seconds)."
+            )
+            assert "path" in entry, (
+                "Each dataset item should include field 'path'" " - path to audio file."
+            )
             assert "text" in entry, (
                 "Each dataset item should include field 'text'"
                 " - text transcription of the audio."
