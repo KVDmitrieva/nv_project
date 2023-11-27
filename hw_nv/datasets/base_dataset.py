@@ -8,7 +8,8 @@ import torchaudio
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from hw_asr.utils.parse_config import ConfigParser
+from hw_nv.utils.parse_config import ConfigParser
+from hw_nv.datasets.utils import MelSpectrogram, MelSpectrogramConfig
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ class BaseDataset(Dataset):
         self.wave_augs = wave_augs
         self.spec_augs = spec_augs
         self.log_spec = config_parser["preprocessing"]["log_spec"]
+        self.mel_spec = MelSpectrogram(MelSpectrogramConfig())
 
         self._assert_index_is_valid(index)
         index = self._filter_records_from_dataset(index, max_audio_length, max_text_length, limit)
@@ -68,11 +70,8 @@ class BaseDataset(Dataset):
         with torch.no_grad():
             if self.wave_augs is not None:
                 audio_tensor_wave = self.wave_augs(audio_tensor_wave)
-            wave2spec = self.config_parser.init_obj(
-                self.config_parser["preprocessing"]["spectrogram"],
-                torchaudio.transforms,
-            )
-            audio_tensor_spec = wave2spec(audio_tensor_wave)
+
+            audio_tensor_spec = self.mel_spec(audio_tensor_wave)
             if self.spec_augs is not None:
                 audio_tensor_spec = self.spec_augs(audio_tensor_spec)
             if self.log_spec:
