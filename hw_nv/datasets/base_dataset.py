@@ -8,7 +8,6 @@ import torchaudio
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from hw_asr.base.base_text_encoder import BaseTextEncoder
 from hw_asr.utils.parse_config import ConfigParser
 
 logger = logging.getLogger(__name__)
@@ -18,7 +17,6 @@ class BaseDataset(Dataset):
     def __init__(
             self,
             index,
-            text_encoder: BaseTextEncoder,
             config_parser: ConfigParser,
             wave_augs=None,
             spec_augs=None,
@@ -26,7 +24,6 @@ class BaseDataset(Dataset):
             max_audio_length=None,
             max_text_length=None,
     ):
-        self.text_encoder = text_encoder
         self.config_parser = config_parser
         self.wave_augs = wave_augs
         self.spec_augs = spec_augs
@@ -49,7 +46,6 @@ class BaseDataset(Dataset):
             "spectrogram": audio_spec,
             "duration": audio_wave.size(1) / self.config_parser["preprocessing"]["sr"],
             "text": data_dict["text"],
-            "text_encoded": self.text_encoder.encode(data_dict["text"]),
             "audio_path": audio_path,
         }
 
@@ -102,7 +98,7 @@ class BaseDataset(Dataset):
         if max_text_length is not None:
             exceeds_text_length = (
                     np.array(
-                        [len(BaseTextEncoder.normalize_text(el["text"])) for el in index]
+                        [len(el["text"]) for el in index]
                     )
                     >= max_text_length
             )
