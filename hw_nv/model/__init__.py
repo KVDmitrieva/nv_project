@@ -1,7 +1,7 @@
-from hw_nv.model.fastspeech import FastSpeech
-from hw_nv.model.fastspeech2 import FastSpeech2
+from hw_nv.model.hifi import *
 
 __all__ = [
-    "FastSpeech",
-    "FastSpeech2"
+    "Generator",
+    "MultiPeriodDiscriminator",
+    "MultiScaleDiscriminator"
 ]
