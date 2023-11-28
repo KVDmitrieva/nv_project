@@ -35,7 +35,7 @@ class Discriminator(BaseModel):
         super().__init__()
         self.msd = nn.ModuleList([ScaleDiscriminator(p, **sd_params) for p in pooling_params])
         self.mpd = nn.ModuleList([PeriodDiscriminator(p, **pd_params) for p in periods])
-    def forward(self, x, **batch):
+    def forward(self, x, prefix="real", **batch):
         output = []
         feature_map = []
         for d in self.msd:
@@ -49,6 +49,6 @@ class Discriminator(BaseModel):
             feature_map.append(f_map)
 
         return {
-            "discriminator_out": output,
-            "feature_map": feature_map
+            f"{prefix}_discriminator_out": output,
+            f"{prefix}_feature_map": feature_map
         }
