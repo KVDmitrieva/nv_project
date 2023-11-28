@@ -6,7 +6,7 @@ import torch.nn.functional as F
 __all__ = ["UpsamplerBlock", "ScaleDiscriminator", "PeriodDiscriminator"]
 
 class UpsamplerBlock(nn.Module):
-    def __init__(self, upsampler_params, res_block_kernels: list, res_block_dilation: list):
+    def __init__(self, upsampler_params, res_block_kernels=(3, 7, 11), res_block_dilation=((1, 1), (3, 1), (5, 1))):
         super().__init__()
         self.upsampler = nn.Sequential(
             nn.LeakyReLU(),
@@ -15,7 +15,7 @@ class UpsamplerBlock(nn.Module):
         n = len(res_block_kernels)
         res_blocks = []
         for i in range(n):
-            res_blocks.append(ResStack(upsampler_params["out_channels"], res_block_kernels[i], res_block_dilation[i]))
+            res_blocks.append(ResStack(upsampler_params["out_channels"], res_block_kernels[i], res_block_dilation))
 
         self.mfr = nn.ModuleList(res_blocks)
 
@@ -27,12 +27,12 @@ class UpsamplerBlock(nn.Module):
         return mfr_out
 
 class ResStack(nn.Module):
-    def __init__(self, channels_num, kernels: list, block_dilation: list):
+    def __init__(self, channels_num, kernel_size, block_dilation: list):
         super().__init__()
-        n = len(kernels)
+        n = len(block_dilation)
         net = []
         for i in range(n):
-            net.append(ResBlock(channels_num=channels_num, kernel_size=kernels[i], dilation=block_dilation[i]))
+            net.append(ResBlock(channels_num=channels_num, kernel_size=kernel_size, dilation=block_dilation[i]))
 
         self.net = nn.Sequential(*net)
     def forward(self, x):
