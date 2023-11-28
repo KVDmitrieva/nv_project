@@ -4,7 +4,7 @@ from hw_nv.model.base_model import BaseModel
 from hw_nv.model.utils import *
 
 
-__all__ = ["Generator", "MultiScaleDiscriminator", "MultiPeriodDiscriminator"]
+__all__ = ["Generator", "Discriminator"]
 
 class Generator(BaseModel):
     def __init__(self, prolog_params, upsampler_blocks_params, epilog_params):
@@ -25,19 +25,30 @@ class Generator(BaseModel):
     def forward(self, x):
         x = self.prolog(x)
         x = self.upsampler(x)
-        return self.epilog(x)
+        x = self.epilog(x)
+        return {
+            "generator_audio": x
+        }
 
-class MultiScaleDiscriminator(BaseModel):
-    def __init__(self):
+class Discriminator(BaseModel):
+    def __init__(self, pooling_params, sd_params, periods, pd_params):
         super().__init__()
-
+        self.msd = nn.ModuleList([ScaleDiscriminator(p, **sd_params) for p in pooling_params])
+        self.mpd = nn.ModuleList([PeriodDiscriminator(p, **pd_params) for p in periods])
     def forward(self, x, **batch):
-        return x
+        output = []
+        feature_map = []
+        for d in self.msd:
+            out, f_map = d(x)
+            output.append(out)
+            feature_map.append(f_map)
 
+        for d in self.mpd:
+            out, f_map = d(x)
+            output.append(out)
+            feature_map.append(f_map)
 
-class MultiPeriodDiscriminator(BaseModel):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x, **batch):
-        return x
+        return {
+            "discriminator_out": output,
+            "feature_map": feature_map
+        }
