@@ -1,17 +1,16 @@
 import random
-from pathlib import Path
-from random import shuffle
 
 import PIL
-import pandas as pd
 import torch
+import torchaudio
 from torch.nn.utils import clip_grad_norm_
 from torchvision.transforms import ToTensor
 from tqdm import tqdm
 
 from hw_nv.trainer.base_trainer import BaseTrainer
 from hw_nv.logger.utils import plot_spectrogram_to_buf
-from hw_nv.utils import inf_loop, MetricTracker
+from hw_nv.utils import inf_loop, MetricTracker, ROOT_PATH
+from hw_nv.datasets.utils import MelSpectrogram, MelSpectrogramConfig
 
 
 class Trainer(BaseTrainer):
@@ -43,6 +42,18 @@ class Trainer(BaseTrainer):
             "discriminator_loss", "generator_loss", "adv_loss", "mel_loss", "feature_loss",
             *[m.name for m in self.metrics], writer=self.writer
         )
+
+        self.mel_spec = MelSpectrogram(MelSpectrogramConfig())
+        self.test_audio = []
+        self.test_mel = []
+        for i in range(3):
+            path = ROOT_PATH / "test_data" / f"audio_{i + 1}.wav"
+            audio_tensor, sr = torchaudio.load(path)
+            audio_tensor = audio_tensor[0:1, :]
+            mel = self.mel_spec(audio_tensor)
+            self.test_audio.append(audio_tensor)
+            self.test_mel.append(mel)
+
 
     @staticmethod
     def move_batch_to_device(batch, device: torch.device):
@@ -150,6 +161,7 @@ class Trainer(BaseTrainer):
             if self.dis_lr_scheduler is not None:
                 self.dis_lr_scheduler.step()
 
+        batch["gen_mel"] = self.mel_spec(batch["generator_audio"])
         gen_loss = self.gen_criterion(**batch)
         batch.update(gen_loss)
 
@@ -212,29 +224,23 @@ class Trainer(BaseTrainer):
             total = self.len_epoch
         return base.format(current, total, 100.0 * current / total)
 
-    def _log_predictions(self, text_encoded, src_pos, mel_target, mel_len, examples_to_log=3, *args, **kwargs):
+    def _log_predictions(self, *args, **kwargs):
         if self.writer is None:
             return
-        # is_training = self.model.training
-        # self.model.eval()
-        # for i in range(examples_to_log):
-        #     txt, pos, mel_src, length = text_encoded[i].detach(), src_pos[i].detach(), mel_target[i].detach(), mel_len[i]
-        #
-        #     mel_pred = self.model.inference(txt.unsqueeze(0), pos.unsqueeze(0)).detach()
-        #
-        #     mel_pred = mel_pred[:length, :]
-        #     mel_src = mel_src[:length, :]
-        #
-        #     wav = waveglow.inference.get_wav(mel_pred.contiguous().transpose(1, 2), self.waveglow_model)
-        #     pred = PIL.Image.open(plot_spectrogram_to_buf(mel_pred.T.cpu()))
-        #     target = PIL.Image.open(plot_spectrogram_to_buf(mel_src.T.cpu()))
-        #
-        #     self.writer.add_image("mel prediction example", ToTensor()(pred))
-        #     self.writer.add_image("mel target example", ToTensor()(target))
-        #     self.writer.add_audio("audio example", wav.detach().cpu().short(), self.config["preprocessing"]["sr"])
-        #
-        # if is_training:
-        #     self.model.train()
+
+        is_training = self.generator.training
+        self.generator.eval()
+        for i , audio_mel in enumerate(zip(self.test_audio, self.test_mel)):
+            audio, mel = audio_mel
+            mel = mel.to(self.device).unsqueeze(0)
+            with torch.no_grad():
+                gen_audio = self.generator(mel)["generator_audio"]
+
+            self.writer.add_audio(f"gen audio_{i + 1}", gen_audio.detach().cpu(), self.config["preprocessing"]["sr"])
+            self.writer.add_audio(f"real audio_{i + 1}", audio, self.config["preprocessing"]["sr"])
+
+        if is_training:
+            self.generator.train()
 
     def _log_spectrogram(self, spectrogram_batch, name="spectrogram"):
         spectrogram = random.choice(spectrogram_batch.cpu())

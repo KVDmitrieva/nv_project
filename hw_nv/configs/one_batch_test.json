@@ -232,23 +232,17 @@
   },
   "metrics": [],
   "gen_lr_scheduler": {
-    "type": "OneCycleLR",
+    "type": "StepLR",
     "args": {
-      "steps_per_epoch": 100,
-      "epochs": 11,
-      "anneal_strategy": "cos",
-      "max_lr": 1e-3,
-      "pct_start": 0.2
+      "step_size": 100,
+      "gamma": 0.999
     }
   },
   "dis_lr_scheduler": {
-    "type": "OneCycleLR",
+    "type": "StepLR",
     "args": {
-      "steps_per_epoch": 100,
-      "epochs": 11,
-      "anneal_strategy": "cos",
-      "max_lr": 1e-3,
-      "pct_start": 0.2
+      "step_size": 100,
+      "gamma": 0.999
     }
   },
   "trainer": {
@@ -261,6 +255,6 @@
     "visualize": "wandb",
     "wandb_project": "nv_project",
     "len_epoch": 100,
-    "grad_norm_clip": 1
+    "grad_norm_clip": 10
   }
 }
