@@ -22,7 +22,7 @@ class GeneratorLoss(nn.Module):
                 feature_loss += self.l1_loss(r, g)
 
         return {
-            "gen_loss": adv_loss + self.mel_lambda * mel_loss + self.fm_lambda * feature_loss,
+            "generator_loss": adv_loss + self.mel_lambda * mel_loss + self.fm_lambda * feature_loss,
             "adv_loss": adv_loss,
             "mel_loss": mel_loss,
             "feature_loss": feature_loss

@@ -14,7 +14,7 @@
     "wave": [],
     "spectrogram": []
   },
-  "arch": {
+  "generator": {
     "type": "Generator",
     "args": {
       "prolog_params": {
@@ -69,7 +69,7 @@
       }
     }
   },
-  "arch2": {
+  "discriminator": {
     "type": "Discriminator",
     "args": {
       "pooling_params": [1, 2, 4],
@@ -185,7 +185,7 @@
         {
           "type": "LJspeechDataset",
           "args": {
-            "part": "val",
+            "part": "train",
             "limit": 10
           }
         }
@@ -198,27 +198,50 @@
         {
           "type": "LJspeechDataset",
           "args": {
-            "part": "val",
+            "part": "train",
             "limit": 10
           }
         }
       ]
     }
   },
-  "optimizer": {
+  "gen_optimizer": {
     "type": "AdamW",
     "args": {
-      "lr": 1e-3,
-      "betas": [0.9, 0.98],
-      "eps":1e-9
+      "lr": 2e-4,
+      "betas": [0.8, 0.99]
     }
   },
-  "loss": {
-    "type": "FastSpeechLoss",
+  "dis_optimizer": {
+    "type": "AdamW",
+    "args": {
+      "lr": 2e-4,
+      "betas": [0.8, 0.99]
+    }
+  },
+  "gen_loss": {
+    "type": "GeneratorLoss",
+    "args": {
+      "mel_lambda": 45,
+      "fm_lambda": 2
+    }
+  },
+  "dis_loss": {
+    "type": "DiscriminatorLoss",
     "args": {}
   },
   "metrics": [],
-  "lr_scheduler": {
+  "gen_lr_scheduler": {
+    "type": "OneCycleLR",
+    "args": {
+      "steps_per_epoch": 100,
+      "epochs": 11,
+      "anneal_strategy": "cos",
+      "max_lr": 1e-3,
+      "pct_start": 0.2
+    }
+  },
+  "dis_lr_scheduler": {
     "type": "OneCycleLR",
     "args": {
       "steps_per_epoch": 100,
@@ -236,7 +259,7 @@
     "monitor": "min val_loss",
     "early_stop": 100,
     "visualize": "wandb",
-    "wandb_project": "tts_project",
+    "wandb_project": "nv_project",
     "len_epoch": 100,
     "grad_norm_clip": 1
   }

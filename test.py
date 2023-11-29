@@ -7,10 +7,6 @@ import torch
 import numpy as np
 from tqdm import tqdm
 
-import utils
-import waveglow
-from text import text_to_sequence
-
 import hw_nv.model as module_model
 from hw_nv.utils import ROOT_PATH
 from hw_nv.utils.object_loading import get_dataloaders
@@ -47,33 +43,33 @@ def main(config, out_dir, test_file, s, p, e, full_test):
     with open(test_file, "r", encoding="utf-8") as f:
         texts = f.readlines()
 
-    waveglow_model = utils.get_WaveGlow()
-    waveglow_model = waveglow_model.cuda()
-
-    with torch.no_grad():
-        for i, t in enumerate(tqdm(texts, desc="Processing texts")):
-            text_enc = text_to_sequence(t, ["english_cleaners"])
-            src_pos = np.arange(1, len(text_enc) + 1)
-
-            text_enc = torch.tensor(text_enc).long().unsqueeze(0).to(device)
-            src_pos = torch.tensor(src_pos).long().unsqueeze(0).to(device)
-            if full_test:
-                for s in [0.8, 1., 1.2]:
-                    for p in [0.8, 1., 1.2]:
-                        for e in [0.8, 1., 1.2]:
-                            mel = model.inference(text_enc, src_pos, s, p, e).transpose(1, 2)
-
-                            waveglow.inference.inference(
-                                mel, waveglow_model,
-                                f"{out_dir}/text_{i + 1}-s_{s}-p_{p}-e_{e}.wav"
-                            )
-            else:
-                mel = model.inference(text_enc, src_pos, s, p, e).transpose(1, 2)
-
-                waveglow.inference.inference(
-                    mel, waveglow_model,
-                    f"{out_dir}/text_{i + 1}-s_{s}-p_{p}-e_{e}.wav"
-                )
+    # waveglow_model = utils.get_WaveGlow()
+    # waveglow_model = waveglow_model.cuda()
+    #
+    # with torch.no_grad():
+    #     for i, t in enumerate(tqdm(texts, desc="Processing texts")):
+    #         text_enc = text_to_sequence(t, ["english_cleaners"])
+    #         src_pos = np.arange(1, len(text_enc) + 1)
+    #
+    #         text_enc = torch.tensor(text_enc).long().unsqueeze(0).to(device)
+    #         src_pos = torch.tensor(src_pos).long().unsqueeze(0).to(device)
+    #         if full_test:
+    #             for s in [0.8, 1., 1.2]:
+    #                 for p in [0.8, 1., 1.2]:
+    #                     for e in [0.8, 1., 1.2]:
+    #                         mel = model.inference(text_enc, src_pos, s, p, e).transpose(1, 2)
+    #
+    #                         waveglow.inference.inference(
+    #                             mel, waveglow_model,
+    #                             f"{out_dir}/text_{i + 1}-s_{s}-p_{p}-e_{e}.wav"
+    #                         )
+    #         else:
+    #             mel = model.inference(text_enc, src_pos, s, p, e).transpose(1, 2)
+    #
+    #             waveglow.inference.inference(
+    #                 mel, waveglow_model,
+    #                 f"{out_dir}/text_{i + 1}-s_{s}-p_{p}-e_{e}.wav"
+    #             )
 
 
 if __name__ == "__main__":

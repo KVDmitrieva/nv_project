@@ -5,8 +5,6 @@ import warnings
 import numpy as np
 import torch
 
-import utils
-
 import hw_nv.loss as module_loss
 import hw_nv.metric as module_metric
 import hw_nv.model as module_arch
@@ -32,17 +30,22 @@ def main(config):
     dataloaders = get_dataloaders(config)
 
     # build model architecture, then print to console
-    model = config.init_obj(config["arch"], module_arch)
-    logger.info(model)
+    generator = config.init_obj(config["generator"], module_arch)
+    logger.info(generator)
+    discriminator = config.init_obj(config["discriminator"], module_arch)
+    logger.info(discriminator)
 
     # prepare for (multi-device) GPU training
     device, device_ids = prepare_device(config["n_gpu"])
-    model = model.to(device)
+    generator = generator.to(device)
+    discriminator = discriminator.to(device)
     if len(device_ids) > 1:
-        model = torch.nn.DataParallel(model, device_ids=device_ids)
+        generator = torch.nn.DataParallel(generator, device_ids=device_ids)
+        discriminator = torch.nn.DataParallel(discriminator, device_ids=device_ids)
 
     # get function handles of loss and metrics
-    loss_module = config.init_obj(config["loss"], module_loss).to(device)
+    gen_loss_module = config.init_obj(config["gen_loss"], module_loss).to(device)
+    dis_loss_module = config.init_obj(config["dis_loss"], module_loss).to(device)
     metrics = [
         config.init_obj(metric_dict, module_metric)
         for metric_dict in config["metrics"]
@@ -50,23 +53,27 @@ def main(config):
 
     # build optimizer, learning rate scheduler. delete every line containing lr_scheduler for
     # disabling scheduler
-    trainable_params = filter(lambda p: p.requires_grad, model.parameters())
-    optimizer = config.init_obj(config["optimizer"], torch.optim, trainable_params)
-    lr_scheduler = config.init_obj(config["lr_scheduler"], torch.optim.lr_scheduler, optimizer)
+    trainable_params = filter(lambda p: p.requires_grad, generator.parameters())
+    gen_optimizer = config.init_obj(config["gen_optimizer"], torch.optim, trainable_params)
+    gen_lr_scheduler = config.init_obj(config["gen_lr_scheduler"], torch.optim.lr_scheduler, gen_optimizer)
 
-    waveglow_model = utils.get_WaveGlow()
-    waveglow_model = waveglow_model.cuda()
+    trainable_params = filter(lambda p: p.requires_grad, discriminator.parameters())
+    dis_optimizer = config.init_obj(config["dis_optimizer"], torch.optim, trainable_params)
+    dis_lr_scheduler = config.init_obj(config["dis_lr_scheduler"], torch.optim.lr_scheduler, dis_optimizer)
 
     trainer = Trainer(
-        model,
-        loss_module,
+        generator,
+        discriminator,
+        gen_loss_module,
+        dis_loss_module,
         metrics,
-        optimizer,
+        gen_optimizer,
+        dis_optimizer,
         config=config,
         device=device,
-        waveglow_model=waveglow_model,
         dataloaders=dataloaders,
-        lr_scheduler=lr_scheduler,
+        gen_lr_scheduler=gen_lr_scheduler,
+        dis_lr_scheduler=dis_lr_scheduler,
         len_epoch=config["trainer"].get("len_epoch", None)
     )
 
@@ -88,13 +95,6 @@ if __name__ == "__main__":
         default=None,
         type=str,
         help="path to latest checkpoint (default: None)",
-    )
-    args.add_argument(
-        "-p",
-        "--from-pretrained",
-        default=None,
-        type=str,
-        help="path to pre-trained model (default: None)",
     )
     args.add_argument(
         "-d",
