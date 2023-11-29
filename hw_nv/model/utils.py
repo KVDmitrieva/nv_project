@@ -46,10 +46,9 @@ class ResBlock(nn.Module):
         net = []
         n = len(dilation)
         for i in range(n):
-            padding = dilation * (kernel_size - 1) // 2
             net.append(nn.LeakyReLU())
             net.append(nn.Conv1d(in_channels=channels_num, out_channels=channels_num,
-                                 kernel_size=kernel_size, dilation=dilation[i], padding=padding))
+                                 kernel_size=kernel_size, dilation=dilation[i], padding='same'))
 
         self.net = nn.Sequential(*net)
 
