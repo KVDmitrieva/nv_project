@@ -3,6 +3,7 @@ import random
 import PIL
 import torch
 import torchaudio
+import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 from torchvision.transforms import ToTensor
 from tqdm import tqdm
@@ -36,7 +37,7 @@ class Trainer(BaseTrainer):
         self.log_step = 50
         self.train_metrics = MetricTracker(
             "discriminator_loss", "generator_loss", "adv_loss", "mel_loss", "feature_loss",
-            "gen grad norm", "dis grad_norm", *[m.name for m in self.metrics], writer=self.writer
+            "gen grad norm", "dis grad norm", *[m.name for m in self.metrics], writer=self.writer
         )
         self.evaluation_metrics = MetricTracker(
             "discriminator_loss", "generator_loss", "adv_loss", "mel_loss", "feature_loss",
@@ -109,8 +110,9 @@ class Trainer(BaseTrainer):
             if batch_idx % self.log_step == 0:
                 self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
                 self.logger.debug(
-                    "Train Epoch: {} {} Loss: {:.6f}".format(
-                        epoch, self._progress(batch_idx), batch["loss"].item()
+                    "Train Epoch: {} {} GenLoss: {:.6f}  DisLoss: {:.6f}".format(
+                        epoch, self._progress(batch_idx), batch["generator_loss"].item(),
+                        batch["discriminator_loss"].item()
                     )
                 )
                 self.writer.add_scalar(
@@ -121,6 +123,8 @@ class Trainer(BaseTrainer):
                 )
                 self._log_predictions(**batch)
                 self._log_audio(batch["generator_audio"], name="generated audio")
+                self._log_spectrogram(batch["mel"], name="real mel")
+                self._log_spectrogram(batch["gen_mel"], name="gen_mel")
                 self._log_scalars(self.train_metrics)
                 # we don't want to reset train metrics at the start of every epoch
                 # because we are interested in recent train metrics
@@ -144,6 +148,7 @@ class Trainer(BaseTrainer):
 
         # generator_audio
         batch.update(self.generator(batch["mel"]))
+        batch["audio"] = F.pad(batch["audio"], (0, batch["generator_audio"].shape[-1] - batch["audio"].shape[-1]))
 
         # real_discriminator_out, real_feature_map
         batch.update(self.discriminator(batch["audio"]))
@@ -161,7 +166,11 @@ class Trainer(BaseTrainer):
             if self.dis_lr_scheduler is not None:
                 self.dis_lr_scheduler.step()
 
+        batch.update(self.discriminator(batch["audio"]))
+        batch.update(self.discriminator(batch["generator_audio"].detach(), prefix="gen"))
+
         batch["gen_mel"] = self.mel_spec(batch["generator_audio"])
+        batch["mel"] = F.pad(batch["mel"], (0, batch["gen_mel"].shape[-1] - batch["mel"].shape[-1]))
         gen_loss = self.gen_criterion(**batch)
         batch.update(gen_loss)
 
@@ -205,6 +214,8 @@ class Trainer(BaseTrainer):
             self.writer.set_step(epoch * self.len_epoch, part)
             self._log_scalars(self.evaluation_metrics)
             self._log_predictions(**batch)
+            self._log_spectrogram(batch["mel"], name="real mel")
+            self._log_spectrogram(batch["gen_mel"], name="gen_mel")
             self._log_audio(batch["generator_audio"], name="generated audio")
 
         # add histogram of model parameters to the tensorboard
@@ -232,9 +243,9 @@ class Trainer(BaseTrainer):
         self.generator.eval()
         for i , audio_mel in enumerate(zip(self.test_audio, self.test_mel)):
             audio, mel = audio_mel
-            mel = mel.to(self.device).unsqueeze(0)
+            mel = mel.to(self.device)
             with torch.no_grad():
-                gen_audio = self.generator(mel)["generator_audio"]
+                gen_audio = self.generator(mel)["generator_audio"].squeeze(1)
 
             self.writer.add_audio(f"gen audio_{i + 1}", gen_audio.detach().cpu(), self.config["preprocessing"]["sr"])
             self.writer.add_audio(f"real audio_{i + 1}", audio, self.config["preprocessing"]["sr"])
@@ -243,12 +254,12 @@ class Trainer(BaseTrainer):
             self.generator.train()
 
     def _log_spectrogram(self, spectrogram_batch, name="spectrogram"):
-        spectrogram = random.choice(spectrogram_batch.cpu())
-        image = PIL.Image.open(plot_spectrogram_to_buf(spectrogram.T))
+        spectrogram = random.choice(spectrogram_batch.detach.cpu())
+        image = PIL.Image.open(plot_spectrogram_to_buf(spectrogram))
         self.writer.add_image(name, ToTensor()(image))
 
     def _log_audio(self, audio_batch, name="audio"):
-        audio = random.choice(audio_batch.cpu())
+        audio = random.choice(audio_batch.detach().cpu())
         self.writer.add_audio(name, audio, self.config["preprocessing"]["sr"])
 
     @torch.no_grad()

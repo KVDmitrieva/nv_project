@@ -93,9 +93,12 @@ class PeriodDiscriminator(nn.Module):
         self.epilog = weight_norm(nn.Conv2d(**epilog_params))
 
     def forward(self, x):
-        batch_size, len_t = x.shape
-        x = F.pad(x, (0, len_t % self.period))
-        x = x.reshape(batch_size, len_t // self.period, self.period)
+        batch_size, channels, len_t = x.shape
+        mod = len_t % self.period
+        pad_len = 0 if mod == 0 else self.period - mod
+        x = F.pad(x, (0, pad_len))
+        batch_size, channels, len_t = x.shape
+        x = x.reshape(batch_size, channels, len_t // self.period, self.period)
 
         feature_maps = []
         for stem in self.stem:

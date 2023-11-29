@@ -1,5 +1,5 @@
 import logging
-import torch
+from torch.nn.utils.rnn import pad_sequence
 from typing import List
 
 logger = logging.getLogger(__name__)
@@ -12,10 +12,10 @@ def collate_fn(dataset_items: List[dict]):
     spectrogram, audio = [], []
 
     for item in dataset_items:
-        audio.append(item["audio"])
+        audio.append(item["audio"].T)
         spectrogram.append(item["spectrogram"].squeeze(0).T)
 
     return {
-        "audio": audio,
-        "mel":  torch.nn.utils.rnn.pad_sequence(spectrogram, batch_first=True).transpose(1, 2)
+        "audio": pad_sequence(audio, batch_first=True).transpose(1, 2),
+        "mel":  pad_sequence(spectrogram, batch_first=True).transpose(1, 2)
     }
