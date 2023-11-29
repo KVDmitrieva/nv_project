@@ -82,7 +82,7 @@ class ScaleDiscriminator(nn.Module):
 
         x = self.epilog(x)
         feature_maps.append(x)
-        return torch.flatten(x), feature_maps
+        return torch.flatten(x, 1), feature_maps
 
 class PeriodDiscriminator(nn.Module):
     def __init__(self, period, stem_params, poststem_params, epilog_params):
