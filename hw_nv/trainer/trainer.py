@@ -55,6 +55,7 @@ class Trainer(BaseTrainer):
             self.test_audio.append(audio_tensor)
             self.test_mel.append(mel)
 
+        self.mel_spec = self.mel_spec.to(self.device)
 
     @staticmethod
     def move_batch_to_device(batch, device: torch.device):
@@ -254,7 +255,7 @@ class Trainer(BaseTrainer):
             self.generator.train()
 
     def _log_spectrogram(self, spectrogram_batch, name="spectrogram"):
-        spectrogram = random.choice(spectrogram_batch.detach.cpu())
+        spectrogram = random.choice(spectrogram_batch.detach().cpu()).squeeze(0)
         image = PIL.Image.open(plot_spectrogram_to_buf(spectrogram))
         self.writer.add_image(name, ToTensor()(image))
 
