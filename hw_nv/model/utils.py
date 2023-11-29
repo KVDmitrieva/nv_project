@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from torch.nn.utils import weight_norm, spectral_norm
 import torch.nn.functional as F
 
 
@@ -55,14 +56,16 @@ class ResBlock(nn.Module):
     def forward(self, x):
         return x + self.net(x)
 
+
 class ScaleDiscriminator(nn.Module):
     def __init__(self, pooling, prolog_params, downsampler_params, post_downsampler_params, epilog_params):
         super().__init__()
+        norm = spectral_norm if pooling == 1 else weight_norm
         self.pooling = nn.AvgPool1d(pooling)
-        self.prolog = nn.Conv1d(**prolog_params)
-        self.downsampler = nn.ModuleList([nn.Conv1d(**params) for params in downsampler_params])
-        self.post_downsampler = nn.Conv1d(**post_downsampler_params)
-        self.epilog =  nn.Conv1d(**epilog_params)
+        self.prolog = norm(nn.Conv1d(**prolog_params))
+        self.downsampler = nn.ModuleList([norm(nn.Conv1d(**params)) for params in downsampler_params])
+        self.post_downsampler = norm(nn.Conv1d(**post_downsampler_params))
+        self.epilog =  norm(nn.Conv1d(**epilog_params))
 
     def forward(self, x):
         x = self.pooling(x)
@@ -86,9 +89,9 @@ class PeriodDiscriminator(nn.Module):
     def __init__(self, period, stem_params, poststem_params, epilog_params):
         super().__init__()
         self.period = period
-        self.stem = nn.ModuleList([nn.Conv2d(**stem_param) for stem_param in stem_params])
-        self.post_stem = nn.Conv2d(**poststem_params)
-        self.epilog = nn.Conv2d(**epilog_params)
+        self.stem = nn.ModuleList([weight_norm(nn.Conv2d(**stem_param)) for stem_param in stem_params])
+        self.post_stem = weight_norm(nn.Conv2d(**poststem_params))
+        self.epilog = weight_norm(nn.Conv2d(**epilog_params))
 
     def forward(self, x):
         batch_size, len_t = x.shape
