@@ -60,7 +60,7 @@ class ScaleDiscriminator(nn.Module):
     def __init__(self, pooling, prolog_params, downsampler_params, post_downsampler_params, epilog_params):
         super().__init__()
         norm = spectral_norm if pooling == 1 else weight_norm
-        self.pooling = nn.AvgPool1d(pooling)
+        self.pooling = nn.AvgPool1d(pooling, padding=pooling // 2)
         self.prolog = norm(nn.Conv1d(**prolog_params))
         self.downsampler = nn.ModuleList([norm(nn.Conv1d(**params)) for params in downsampler_params])
         self.post_downsampler = norm(nn.Conv1d(**post_downsampler_params))
