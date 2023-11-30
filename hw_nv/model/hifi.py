@@ -21,6 +21,7 @@ class Generator(BaseModel):
             nn.Conv1d(**epilog_params),
             nn.Tanh()
         )
+        self.apply(init_weights)
 
     def forward(self, x):
         x = self.prolog(x)
@@ -35,6 +36,7 @@ class Discriminator(BaseModel):
         super().__init__()
         self.msd = nn.ModuleList([ScaleDiscriminator(p, **sd_params) for p in pooling_params])
         self.mpd = nn.ModuleList([PeriodDiscriminator(p, **pd_params) for p in periods])
+        self.apply(init_weights)
     def forward(self, x, prefix="real", **batch):
         output = []
         feature_map = []
