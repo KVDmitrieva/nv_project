@@ -179,7 +179,7 @@
   },
   "data": {
     "train": {
-      "batch_size": 16,
+      "batch_size": 26,
       "num_workers": 0,
       "datasets": [
         {
@@ -191,7 +191,7 @@
       ]
     },
     "val": {
-      "batch_size": 16,
+      "batch_size": 26,
       "num_workers": 0,
       "datasets": [
         {
@@ -230,16 +230,14 @@
   },
   "metrics": [],
   "gen_lr_scheduler": {
-    "type": "StepLR",
+    "type": "ExponentialLR",
     "args": {
-      "step_size": 300,
       "gamma": 0.999
     }
   },
   "dis_lr_scheduler": {
-    "type": "StepLR",
+    "type": "ExponentialLR",
     "args": {
-      "step_size": 300,
       "gamma": 0.999
     }
   },
@@ -253,6 +251,6 @@
     "visualize": "wandb",
     "wandb_project": "nv_project",
     "len_epoch": 300,
-    "grad_norm_clip": 10
+    "grad_norm_clip": 1000
   }
 }
