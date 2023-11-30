@@ -183,7 +183,7 @@ class Trainer(BaseTrainer):
         batch.update(gen_loss)
 
         if is_train:
-            batch["generator_loss"].backward()
+            gen_loss.backward()
             self._clip_grad_norm(model_type="gen")
             self.gen_optimizer.step()
 
@@ -260,12 +260,12 @@ class Trainer(BaseTrainer):
             self.generator.train()
 
     def _log_spectrogram(self, spectrogram_batch, name="spectrogram"):
-        spectrogram = random.choice(spectrogram_batch.detach().cpu()).squeeze(0)
+        spectrogram = random.choice(spectrogram_batch.cpu()).squeeze(0)
         image = PIL.Image.open(plot_spectrogram_to_buf(spectrogram))
         self.writer.add_image(name, ToTensor()(image))
 
     def _log_audio(self, audio_batch, name="audio"):
-        audio = random.choice(audio_batch.detach().cpu())
+        audio = random.choice(audio_batch.cpu())
         self.writer.add_audio(name, audio, self.config["preprocessing"]["sr"])
 
     @torch.no_grad()
