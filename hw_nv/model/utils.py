@@ -11,7 +11,7 @@ class UpsamplerBlock(nn.Module):
         super().__init__()
         self.upsampler = nn.Sequential(
             nn.LeakyReLU(),
-            nn.ConvTranspose1d(**upsampler_params)
+            weight_norm(nn.ConvTranspose1d(**upsampler_params))
         )
         n = len(res_block_kernels)
         res_blocks = []
@@ -47,8 +47,8 @@ class ResBlock(nn.Module):
         n = len(dilation)
         for i in range(n):
             net.append(nn.LeakyReLU())
-            net.append(nn.Conv1d(in_channels=channels_num, out_channels=channels_num,
-                                 kernel_size=kernel_size, dilation=dilation[i], padding='same'))
+            net.append(weight_norm(nn.Conv1d(in_channels=channels_num, out_channels=channels_num,
+                                             kernel_size=kernel_size, dilation=dilation[i], padding='same')))
 
         self.net = nn.Sequential(*net)
 
