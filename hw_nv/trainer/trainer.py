@@ -183,7 +183,7 @@ class Trainer(BaseTrainer):
         batch.update(gen_loss)
 
         if is_train:
-            gen_loss.backward()
+            gen_loss["generator_loss"].backward()
             self._clip_grad_norm(model_type="gen")
             self.gen_optimizer.step()
 
