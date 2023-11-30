@@ -116,5 +116,3 @@ class PeriodDiscriminator(nn.Module):
 def init_weights(module, mean=0.0, std=0.01):
     if isinstance(module, nn.Conv1d) or isinstance(module, nn.ConvTranspose1d) or isinstance(module, nn.Conv2d):
         module.weight.data.normal_(mean=mean, std=std)
-        if module.bias is not None:
-            module.bias.data.zero_()
