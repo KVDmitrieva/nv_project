@@ -152,7 +152,6 @@ class Trainer(BaseTrainer):
 
         # generator_audio
         batch.update(self.generator(batch["mel"]))
-        batch["audio"] = F.pad(batch["audio"], (0, batch["generator_audio"].shape[-1] - batch["audio"].shape[-1]))
 
         if is_train:
             self.dis_optimizer.zero_grad()
@@ -178,7 +177,6 @@ class Trainer(BaseTrainer):
         batch.update(self.discriminator(batch["generator_audio"].detach(), prefix="gen"))
 
         batch["gen_mel"] = self.mel_spec(batch["generator_audio"])
-        batch["mel"] = F.pad(batch["mel"], (0, batch["gen_mel"].shape[-1] - batch["mel"].shape[-1]), value=self.mel_spec.config.pad_value)
         gen_loss = self.gen_criterion(**batch)
         batch.update(gen_loss)
 
