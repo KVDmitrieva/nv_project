@@ -149,13 +149,13 @@ class Trainer(BaseTrainer):
 
     def process_batch(self, batch, is_train: bool, metrics: MetricTracker):
         batch = self.move_batch_to_device(batch, self.device)
-        if is_train:
-            self.gen_optimizer.zero_grad()
-            self.dis_optimizer.zero_grad()
 
         # generator_audio
         batch.update(self.generator(batch["mel"]))
         batch["audio"] = F.pad(batch["audio"], (0, batch["generator_audio"].shape[-1] - batch["audio"].shape[-1]))
+
+        if is_train:
+            self.dis_optimizer.zero_grad()
 
         # real_discriminator_out, real_feature_map
         batch.update(self.discriminator(batch["audio"]))
@@ -173,6 +173,9 @@ class Trainer(BaseTrainer):
 
         batch.update(self.discriminator(batch["audio"]))
         batch.update(self.discriminator(batch["generator_audio"].detach(), prefix="gen"))
+
+        if is_train:
+            self.gen_optimizer.zero_grad()
 
         batch["gen_mel"] = self.mel_spec(batch["generator_audio"])
         batch["mel"] = F.pad(batch["mel"], (0, batch["gen_mel"].shape[-1] - batch["mel"].shape[-1]), value=self.mel_spec.config.pad_value)
