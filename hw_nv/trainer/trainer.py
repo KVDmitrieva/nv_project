@@ -260,12 +260,12 @@ class Trainer(BaseTrainer):
             self.generator.train()
 
     def _log_spectrogram(self, spectrogram_batch, name="spectrogram"):
-        spectrogram = random.choice(spectrogram_batch.cpu()).squeeze(0)
+        spectrogram = random.choice(spectrogram_batch.detach().cpu()).squeeze(0)
         image = PIL.Image.open(plot_spectrogram_to_buf(spectrogram))
         self.writer.add_image(name, ToTensor()(image))
 
     def _log_audio(self, audio_batch, name="audio"):
-        audio = random.choice(audio_batch.cpu())
+        audio = random.choice(audio_batch.detach().cpu())
         self.writer.add_audio(name, audio, self.config["preprocessing"]["sr"])
 
     @torch.no_grad()
