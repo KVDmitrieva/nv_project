@@ -171,11 +171,11 @@ class Trainer(BaseTrainer):
             self._clip_grad_norm(model_type="dis")
             self.dis_optimizer.step()
 
-        batch.update(self.discriminator(batch["audio"]))
-        batch.update(self.discriminator(batch["generator_audio"].detach(), prefix="gen"))
-
         if is_train:
             self.gen_optimizer.zero_grad()
+
+        batch.update(self.discriminator(batch["audio"]))
+        batch.update(self.discriminator(batch["generator_audio"].detach(), prefix="gen"))
 
         batch["gen_mel"] = self.mel_spec(batch["generator_audio"])
         batch["mel"] = F.pad(batch["mel"], (0, batch["gen_mel"].shape[-1] - batch["mel"].shape[-1]), value=self.mel_spec.config.pad_value)
