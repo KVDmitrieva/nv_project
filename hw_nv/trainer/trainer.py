@@ -135,6 +135,12 @@ class Trainer(BaseTrainer):
                 break
         log = last_train_metrics
 
+        if self.dis_lr_scheduler is not None:
+            self.dis_lr_scheduler.step()
+
+        if self.gen_lr_scheduler is not None:
+            self.gen_lr_scheduler.step()
+
         for part, dataloader in self.evaluation_dataloaders.items():
             val_log = self._evaluation_epoch(epoch, part, dataloader)
             log.update(**{f"{part}_{name}": value for name, value in val_log.items()})
@@ -164,8 +170,6 @@ class Trainer(BaseTrainer):
             batch["discriminator_loss"].backward()
             self._clip_grad_norm(model_type="dis")
             self.dis_optimizer.step()
-            if self.dis_lr_scheduler is not None:
-                self.dis_lr_scheduler.step()
 
         batch.update(self.discriminator(batch["audio"]))
         batch.update(self.discriminator(batch["generator_audio"].detach(), prefix="gen"))
@@ -179,8 +183,6 @@ class Trainer(BaseTrainer):
             batch["generator_loss"].backward()
             self._clip_grad_norm(model_type="gen")
             self.gen_optimizer.step()
-            if self.gen_lr_scheduler is not None:
-                self.gen_lr_scheduler.step()
 
         for key in dis_loss.keys():
             metrics.update(key, batch[key].item())
