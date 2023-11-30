@@ -13,9 +13,9 @@ class UpsamplerBlock(nn.Module):
             nn.LeakyReLU(),
             weight_norm(nn.ConvTranspose1d(**upsampler_params))
         )
-        n = len(res_block_kernels)
+        self.n = len(res_block_kernels)
         res_blocks = []
-        for i in range(n):
+        for i in range(self.n):
             res_blocks.append(ResStack(upsampler_params["out_channels"], res_block_kernels[i], res_block_dilation))
 
         self.mfr = nn.ModuleList(res_blocks)
@@ -25,7 +25,7 @@ class UpsamplerBlock(nn.Module):
         mfr_out = torch.zeros_like(x, device=x.device)
         for res_block in self.mfr:
             mfr_out = mfr_out + res_block(x)
-        return mfr_out
+        return mfr_out / self.n
 
 class ResStack(nn.Module):
     def __init__(self, channels_num, kernel_size, block_dilation: list):
