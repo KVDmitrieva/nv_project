@@ -204,10 +204,10 @@ class BaseTrainer:
                 "from that of checkpoint. Optimizer parameters not being resumed."
             )
         else:
-            self.gen_optimizer.load_state_dict(gen_checkpoint["gen_optimizer"])
-            self.dis_optimizer.load_state_dict(dis_checkpoint["dis_optimizer"])
-            self.gen_lr_scheduler.load_state_dict(gen_checkpoint["gen_lr_scheduler"])
-            self.dis_lr_scheduler.load_state_dict(dis_checkpoint["dis_lr_scheduler"])
+            self.gen_optimizer.load_state_dict(gen_checkpoint["optimizer"])
+            self.dis_optimizer.load_state_dict(dis_checkpoint["optimizer"])
+            self.gen_lr_scheduler.load_state_dict(gen_checkpoint["lr_scheduler"])
+            self.dis_lr_scheduler.load_state_dict(dis_checkpoint["lr_scheduler"])
 
         self.logger.info(
             "Checkpoint loaded. Resume training from epoch {}".format(self.start_epoch)
