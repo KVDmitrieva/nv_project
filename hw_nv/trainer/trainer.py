@@ -3,7 +3,6 @@ import random
 import PIL
 import torch
 import torchaudio
-import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 from torchvision.transforms import ToTensor
 from tqdm import tqdm
@@ -174,9 +173,9 @@ class Trainer(BaseTrainer):
             self.gen_optimizer.zero_grad()
 
         batch.update(self.discriminator(batch["audio"]))
-        batch.update(self.discriminator(batch["generator_audio"].detach(), prefix="gen"))
+        batch.update(self.discriminator(batch["generator_audio"], prefix="gen"))
 
-        batch["gen_mel"] = self.mel_spec(batch["generator_audio"])
+        batch["gen_mel"] = self.mel_spec(batch["generator_audio"]).squeeze(1)
         gen_loss = self.gen_criterion(**batch)
         batch.update(gen_loss)
 

@@ -28,32 +28,25 @@ class UpsamplerBlock(nn.Module):
         return mfr_out / self.n
 
 class ResStack(nn.Module):
-    def __init__(self, channels_num, kernel_size, block_dilation: list):
-        super().__init__()
-        n = len(block_dilation)
-        net = []
-        for i in range(n):
-            net.append(ResBlock(channels_num=channels_num, kernel_size=kernel_size, dilation=block_dilation[i]))
-
-        self.net = nn.Sequential(*net)
-    def forward(self, x):
-        return self.net(x)
-
-
-class ResBlock(nn.Module):
     def __init__(self, channels_num, kernel_size, dilation: list):
         super().__init__()
-        net = []
         n = len(dilation)
+        net = []
         for i in range(n):
-            net.append(nn.LeakyReLU())
-            net.append(weight_norm(nn.Conv1d(in_channels=channels_num, out_channels=channels_num,
-                                             kernel_size=kernel_size, dilation=dilation[i], padding='same')))
+            net.append(nn.Sequential(
+                nn.LeakyReLU(),
+                weight_norm(nn.Conv1d(in_channels=channels_num, out_channels=channels_num,
+                                      kernel_size=kernel_size, dilation=dilation[i][0], padding='same')),
+                nn.LeakyReLU(),
+                weight_norm(nn.Conv1d(in_channels=channels_num, out_channels=channels_num,
+                                      kernel_size=kernel_size, dilation=dilation[i][1], padding='same'))
+            ))
 
-        self.net = nn.Sequential(*net)
-
+        self.net = nn.ModuleList(net)
     def forward(self, x):
-        return x + self.net(x)
+        for block in self.net:
+            x = x + block(x)
+        return x
 
 
 class ScaleDiscriminator(nn.Module):
