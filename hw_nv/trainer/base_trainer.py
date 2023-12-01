@@ -172,8 +172,9 @@ class BaseTrainer:
 
         :param resume_path: Checkpoint path to be resumed
         """
-        resume_path = str(resume_path)
-        gen_resume_path, dis_resume_path = resume_path.split("&")
+        gen_resume_path = str(resume_path)
+
+        dis_resume_path = gen_resume_path.split('/')[-1] + "/discriminator.pth"
 
         self.logger.info("Loading generator checkpoint: {} ...".format(gen_resume_path))
         gen_checkpoint = torch.load(gen_resume_path, self.device)
