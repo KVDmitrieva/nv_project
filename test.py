@@ -4,19 +4,18 @@ import os
 from pathlib import Path
 
 import torch
-import numpy as np
-from tqdm import tqdm
+import torchaudio
 
 import hw_nv.model as module_model
 from hw_nv.utils import ROOT_PATH
-from hw_nv.utils.object_loading import get_dataloaders
+from hw_nv.datasets.utils import MelSpectrogram, MelSpectrogramConfig
 from hw_nv.utils.parse_config import ConfigParser
 
 
 DEFAULT_CHECKPOINT_PATH = ROOT_PATH / "default_test_model" / "checkpoint.pth"
 
 
-def main(config, out_dir, test_file, s, p, e, full_test):
+def main(config, out_dir, test_file):
     logger = config.get_logger("test")
 
     # define cpu or gpu if possible
@@ -40,36 +39,18 @@ def main(config, out_dir, test_file, s, p, e, full_test):
     if not Path(out_dir).exists():
         Path(out_dir).mkdir(exist_ok=True, parents=True)
 
-    with open(test_file, "r", encoding="utf-8") as f:
-        texts = f.readlines()
+    mel_spec = MelSpectrogram(MelSpectrogramConfig())
 
-    # waveglow_model = utils.get_WaveGlow()
-    # waveglow_model = waveglow_model.cuda()
-    #
-    # with torch.no_grad():
-    #     for i, t in enumerate(tqdm(texts, desc="Processing texts")):
-    #         text_enc = text_to_sequence(t, ["english_cleaners"])
-    #         src_pos = np.arange(1, len(text_enc) + 1)
-    #
-    #         text_enc = torch.tensor(text_enc).long().unsqueeze(0).to(device)
-    #         src_pos = torch.tensor(src_pos).long().unsqueeze(0).to(device)
-    #         if full_test:
-    #             for s in [0.8, 1., 1.2]:
-    #                 for p in [0.8, 1., 1.2]:
-    #                     for e in [0.8, 1., 1.2]:
-    #                         mel = model.inference(text_enc, src_pos, s, p, e).transpose(1, 2)
-    #
-    #                         waveglow.inference.inference(
-    #                             mel, waveglow_model,
-    #                             f"{out_dir}/text_{i + 1}-s_{s}-p_{p}-e_{e}.wav"
-    #                         )
-    #         else:
-    #             mel = model.inference(text_enc, src_pos, s, p, e).transpose(1, 2)
-    #
-    #             waveglow.inference.inference(
-    #                 mel, waveglow_model,
-    #                 f"{out_dir}/text_{i + 1}-s_{s}-p_{p}-e_{e}.wav"
-    #             )
+    for i in range(3):
+        path = ROOT_PATH / "test_data" / f"audio_{i + 1}.wav"
+        audio_tensor, sr = torchaudio.load(path)
+        audio_tensor = audio_tensor[0:1, :]
+        mel = mel_spec(audio_tensor).to(device)
+
+        gen_audio = model(mel)["generator_audio"].squeeze(1)
+
+        path = f"{str(out_dir)}/save_example_default.wav"
+        torchaudio.save(path, gen_audio, config["preprocessing"]["sr"])
 
 
 if __name__ == "__main__":
@@ -100,49 +81,14 @@ if __name__ == "__main__":
         "--output",
         default="output",
         type=str,
-        help="File to write results (.json)",
+        help="Dir to write results",
     )
     args.add_argument(
         "-t",
         "--test",
-        default=ROOT_PATH / "test_texts.txt",
+        default=ROOT_PATH / "test_data",
         type=str,
-        help="Path to test texts",
-    )
-    args.add_argument(
-        "-j",
-        "--jobs",
-        default=1,
-        type=int,
-        help="Number of workers for test dataloader",
-    )
-    args.add_argument(
-        "-s",
-        "--speed",
-        default=1.,
-        type=float,
-        help="speed level",
-    )
-    args.add_argument(
-        "-p",
-        "--pitch",
-        default=1.,
-        type=float,
-        help="pitch level",
-    )
-    args.add_argument(
-        "-e",
-        "--energy",
-        default=1.,
-        type=float,
-        help="energy level",
-    )
-    args.add_argument(
-        "-a",
-        "--test-all",
-        default=False,
-        type=bool,
-        help="run full test",
+        help="Path to test audios",
     )
 
     args = args.parse_args()
@@ -162,4 +108,4 @@ if __name__ == "__main__":
         with Path(args.config).open() as f:
             config.config.update(json.load(f))
 
-    main(config, args.output, args.test, args.speed, args.pitch, args.energy, args.test_all)
+    main(config, args.output, args.test)
