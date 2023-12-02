@@ -47,7 +47,7 @@ def main(config, out_dir, test_file):
         audio_tensor = audio_tensor[0:1, :]
         mel = mel_spec(audio_tensor).to(device)
 
-        gen_audio = model(mel)["generator_audio"].squeeze(1)
+        gen_audio = model(mel)["generator_audio"].squeeze(1).cpu()
 
         path = f"{str(out_dir)}/save_example_default.wav"
         torchaudio.save(path, gen_audio, config["preprocessing"]["sr"])
