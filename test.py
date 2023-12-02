@@ -22,7 +22,7 @@ def main(config, out_dir, test_file):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # build model architecture
-    model = config.init_obj(config["arch"], module_model)
+    model = config.init_obj(config["generator"], module_model)
     logger.info(model)
 
     logger.info("Loading checkpoint: {} ...".format(config.resume))
