@@ -49,7 +49,7 @@ def main(config, out_dir, test_file):
 
         gen_audio = model(mel)["generator_audio"].squeeze(1).cpu()
 
-        path = f"{str(out_dir)}/save_example_default.wav"
+        path = f"{str(out_dir)}/gen_audio_{i + 1}.wav"
         torchaudio.save(path, gen_audio, config["preprocessing"]["sr"])
 
 
