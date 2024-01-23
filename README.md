@@ -1,5 +1,14 @@
 # NV project
 
+Implementation of [HiFi-GAN: Generative Adversarial Networks for
+Efficient and High Fidelity Speech Synthesis](https://arxiv.org/pdf/2010.05646.pdf)
+
+<p align="center">
+  <img src="./generator.png" height="300" />
+  <img src="./discriminator.png" height="300" />
+</p>
+
+
 ## Installation guide
 Run
 ```shell
